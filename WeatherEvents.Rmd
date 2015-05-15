@@ -1,0 +1,78 @@
+#The Most Harmful Types of Weather Events with Respect to Public Health and Economic Problems
+
+##Synopsis
+
+In this report, we aim to describe that which types of severe weather events are most harmful with respect to public health and economic problems. To find out the results, we obtained the data from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. From these data, 
+
+##Packages Included
+
+Here are the packages needed in this report.
+
+```{r packages, message=F, warning=F}
+library(dplyr)
+```
+
+##Data Processing
+
+From the course [*Reproducible Research*](https://class.coursera.org/repdata-014), we get the [data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) which is in the form of a comma-separated-value file compressed via the bzip2 algorithm to reduce its size. And you will find how some of the variables are constructed/defined in [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf) and [National Climatic Data Center Storm Events FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf).
+
+###Downloading and Reading in the data
+
+We first download the data and read in it. The header data is read and the strings are not treated as factors.
+
+```{r get_data, cache=T, results="hide", message=F, warning=F}
+if (!file.exists("StormData.csv.bz2")) {
+    download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "StormData.csv.bz2")
+}
+
+stormdata <- read.csv(bzfile("StormData.csv.bz2"), header = T, stringsAsFactors = F, 
+                      na.strings = "")
+```
+
+After reading in the data we review some information in this dataset.
+
+```{r review, cache=T}
+str(stormdata)
+```
+
+###Getting the Subset of the Data
+
+The columns we are interested in are as follows:
+
+-   `EVTYPE`: The weather events.
+
+-   `FATALITIES`: The number of fatalities.
+
+-   `INJURIES`: The number of injuries.
+
+-   `PROPDMG`: The estimates of property damage entered as actual dollar amounts.
+
+-   `CROPDMG`: Crop damage information.
+
+```{r subset, results="Hide"}
+sub_storm <- select(stormdata, EVTYPE, FATALITIES, INJURIES, PROPDMG, CROPDMG)
+```
+
+```{r tmp, }
+tail(sub_storm)
+```
+
+We also need to change the class of `EVTYPE`, `FATALITIES`, `INJURIES`, `PROPDMG`, `CROPDMG` into numeric.
+
+```{r numeric, results="hide", cache=T}
+for (i in 2:ncol(sub_storm)) {
+    sub_storm[, i] <- as.numeric(sub_storm[, i])
+}
+```
+
+We then group the subset by `EVTYPE` and summarise the other four columns with the function `sum()`. 
+
+```{r group, }
+g_event <- group_by(sub_storm, EVTYPE)
+head(g_event)
+```
+
+
+##Results
+
+
