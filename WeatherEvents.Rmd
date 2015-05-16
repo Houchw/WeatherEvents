@@ -2,11 +2,11 @@
 
 ##Synopsis
 
-In this report, we aim to describe that which types of severe weather events are most harmful with respect to public health and economic problems. To find out the results, we obtained the data from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. From these data, 
+In this report, we aim to describe that which types of severe weather events are most harmful with respect to public health and economic problems. To find out the results, we obtained the data from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. We only choose the weather events which are permitted storm data events according to [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf). For each event, we caculate the loss of health via summing the fatalities and injuries and so as the economic loss through adding the property and crop damages up. From these data , we find that the most harmful types of weather events in the consideration of public health are **TORNADO** and it is also the **TORNADO** that caused the greatest economic consequences.
 
-##Packages Included
+##Package Included
 
-Here are the packages needed in this report.
+Here is the package needed in this report.
 
 ```{r packages, message=F, warning=F}
 library(dplyr)
@@ -20,13 +20,13 @@ From the course [*Reproducible Research*](https://class.coursera.org/repdata-014
 
 We first download the data and read in it. The header data is read and the strings are not treated as factors.
 
-```{r get_data, cache=T, results="hide", message=F, warning=F}
+```{r get_data, cache=T, results="hide", message=F, warning=T}
 if (!file.exists("StormData.csv.bz2")) {
     download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "StormData.csv.bz2")
 }
 
 stormdata <- read.csv(bzfile("StormData.csv.bz2"), header = T, stringsAsFactors = F, 
-                      na.strings = "")
+                      na.strings = "", quote = "", sep = ",")
 ```
 
 After reading in the data we review some information in this dataset.
@@ -47,32 +47,135 @@ The columns we are interested in are as follows:
 
 -   `PROPDMG`: The estimates of property damage entered as actual dollar amounts.
 
+-   `PROPDMGEXP`: A multiplier where Hundred (H), Thousand (K), Million (M), Billion (B)
+
 -   `CROPDMG`: Crop damage information.
 
-```{r subset, results="Hide"}
-sub_storm <- select(stormdata, EVTYPE, FATALITIES, INJURIES, PROPDMG, CROPDMG)
+-   `CROPDMGEXP`: A multiplier where Hundred (H), Thousand (K), Million (M), Billion (B)
+
+```{r subset, results="hide", cache=T}
+sub_storm <- select(stormdata, EVTYPE, FATALITIES, INJURIES, PROPDMG, PROPDMGEXP, CROPDMG,
+                    CROPDMGEXP)
+
 ```
 
-```{r tmp, }
-tail(sub_storm)
+We only choose the rows where the events of `EVTYPE` are permitted storm data events.
+```{r permitted_events, cache=T, results=F, warning=FALSE}
+permitted_events <- c("Astronomical Low Tide", "Avalanche", "Blizzard", "Coastal Flood", "Cold",
+                      "Wind Chill, Debris Flow", "Dense Fog", "Dense Smoke", "Drought", 
+                      "Dust Devil", "Dust Storm", "Excessive Heat", "Extreme Cold", "Wind Chill",
+                      "Flash Flood", "Flood", "Frost", "Freeze", "Funnel Cloud", "Freezing Fog",
+                      "Hail", "Heat", "Heavy Rain", "Heavy Snow", "High Surf", "High Wind",
+                      "Hurricane","Typhoon", "Ice Storm", "Lake-Effect Snow", "Lakeshore Flood",
+                      "Lightning", "Marine Hail", "Marine High Wind", "Marine Strong Wind", 
+                      "Marine Thunderstorm Wind", "Rip Current", "Seiche, Sleet", "Storm Surge",
+                      "Tide", "Strong Wind", "Thunderstorm Wind", "Tornado", "Tropical Depression",
+                      "Tropical Storm", "Tsunami", "Volcanic Ash", "Waterspout", "Wildfire", 
+                      "Winter Storm", "Winter Weather")
+permitted_events <- toupper(permitted_events)
+sub_storm <- filter(sub_storm, !is.na(EVTYPE))
+Encoding(sub_storm$EVTYPE) <- "UTF-8"
+sub_storm$EVTYPE <- toupper(as.character(sub_storm$EVTYPE))
+sub_storm <- filter(sub_storm, EVTYPE %in% permitted_events)
 ```
 
-We also need to change the class of `EVTYPE`, `FATALITIES`, `INJURIES`, `PROPDMG`, `CROPDMG` into numeric.
+We also need to change the class of `EVTYPE`, `FATALITIES`, `INJURIES`, `PROPDMG`, `PROPDMGEXP`, `CROPDMG`, `CROPDMGEXP` into numeric.
 
-```{r numeric, results="hide", cache=T}
+```{r numeric, results="hide", cache=T, tidy=T, warning=F}
+for (i in 1:nrow(sub_storm)) {
+    if (!is.na(sub_storm[i, "PROPDMGEXP"])){
+        if (sub_storm[i, "PROPDMGEXP"] == "B") {
+            sub_storm[i, "PROPDMGEXP"] = 9
+        } else if (sub_storm[i, "PROPDMGEXP"] == "M") {
+            sub_storm[i, "PROPDMGEXP"] = 6
+        } else if (sub_storm[i, "PROPDMGEXP"] == "K") {
+            sub_storm[i, "PROPDMGEXP"] = 3
+        } else if (sub_storm[i, "PROPDMGEXP"] == "H" 
+                | sub_storm[i, "PROPDMGEXP"] == 'h') {
+            sub_storm[i, "PROPDMGEXP"] = 2
+        } else {
+            sub_storm[i, "PROPDMGEXP"] = as.numeric(sub_storm[i, "PROPDMGEXP"])
+        }
+    }    
+}
+for (i in 1:nrow(sub_storm)) {
+    if (!is.na(sub_storm[i, "CROPDMGEXP"])){
+        if (sub_storm[i, "CROPDMGEXP"] == "B") {
+            sub_storm[i, "CROPDMGEXP"] = 9
+        } else if (sub_storm[i, "CROPDMGEXP"] == "M") {
+            sub_storm[i, "CROPDMGEXP"] = 6
+        } else if (sub_storm[i, "CROPDMGEXP"] == "K") {
+            sub_storm[i, "CROPDMGEXP"] = 3
+        } else if (sub_storm[i, "CROPDMGEXP"] == "H" 
+                | sub_storm[i, "CROPDMGEXP"] == 'h') {
+            sub_storm[i, "CROPDMGEXP"] = 2
+        } else {
+            sub_storm[i, "CROPDMGEXP"] = as.numeric(sub_storm[i, "PROPDMGEXP"])
+        }
+    }    
+}
 for (i in 2:ncol(sub_storm)) {
     sub_storm[, i] <- as.numeric(sub_storm[, i])
 }
 ```
 
-We then group the subset by `EVTYPE` and summarise the other four columns with the function `sum()`. 
+After the above jobs, we create new variables containing the loss of health and economic. 
+```{r new_variables, cache = T, results = "hide", warning = F}
 
-```{r group, }
-g_event <- group_by(sub_storm, EVTYPE)
-head(g_event)
+#define a function to caculate the loss.
+no_nas <- function(x, y) {
+    ret = 0
+    if (!is.numeric(x)) {
+        ret = NA
+    } else if (!is.numeric(y)) {
+        ret = x
+    } else {
+        ret = x * 10^y
+    }
+    ret
+}
+sub_storm <- mutate(sub_storm, HealthLoss = FATALITIES + INJURIES)
+for (i in 1:nrow(sub_storm)) {
+    sub_storm[i, "PropCash"] = no_nas(sub_storm[i, "PROPDMG"], sub_storm[i, "PROPDMGEXP"])
+    sub_storm[i, "CropCash"] = no_nas(sub_storm[i, "CROPDMG"], sub_storm[i, "CROPDMGEXP"])
+}
+
 ```
 
+We then group the subset by `EVTYPE` and summarise the other columns with the function `sum()`. 
+
+```{r group, cache = T, results = "hide", warning = T}
+g_event <- group_by(sub_storm, EVTYPE)
+sum_loss <- summarise(g_event,
+                      FATALITIES = sum(FATALITIES, na.rm = T), 
+                      INJURIES = sum(INJURIES, na.rm = T), 
+                      HealthLoss = sum(HealthLoss, na.rm = T),
+                      PropCash = sum(PropCash, na.rm = T), 
+                      CropCash = sum(CropCash, na.rm = T), 
+                      EconomicLoss = PropCash + CropCash
+                      )
+```
+
+We are only interested in the data about `HealthLoss` and `EconomicLoss`.
+
+```{r final_data, cache=T, results="hide"}
+final_data <- select(sum_loss, EVTYPE, HealthLoss, EconomicLoss)
+```
 
 ##Results
 
+Here is a histogram about the number of fatalities and injuries caused by different weather events:
 
+```{r health, cache=T, fig.show='asis',fig.align='center', fig.width=9, fig.height=5}
+with(final_data, barplot(HealthLoss, names.arg = EVTYPE, horiz=F,las = 2, cex.axis = 0.8, cex.names = 0.8, ylab = "Number of Fatalities and Injuries", main = "Figure 1: The Number of Fatalities and Injuries Caused by Different Weather Events"))
+```
+
+From the *Figure 1*, we can tell that the weather events **TORNADO** are most harmful with respect to population health.
+
+The following histogram about the economic loss in cash caused by different weather events:
+
+```{r economic, cache=T, fig.show='asis',fig.align='center', fig.width=9, fig.height=5}
+with(final_data, barplot(EconomicLoss, names.arg = EVTYPE, horiz=F,las = 2, cex.axis = 0.8, cex.names = 0.8, ylab = "Economic Loss in Cash", main = "Figure 2: The Economic Loss in Cash Caused by Different Weather Events"))
+```
+
+From the *Figure 2*, we find that the weather events **TORNADO** have the greatest economic consequences.
